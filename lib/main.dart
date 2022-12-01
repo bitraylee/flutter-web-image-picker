@@ -1,4 +1,10 @@
+import 'dart:io';
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(const MyApp());
@@ -48,68 +54,102 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  File? _pickedImage;
+  Uint8List webImage=Uint8List(8);
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  Future<void> handleImagePicker() async {
+    // print("K is web");
+    if(!kIsWeb){
+      final permStatus=await Permission.mediaLibrary.request();
+      if(!permStatus.isGranted){
+        print("Cannot access photo gallery");
+        return;
+      }
+      final ImagePicker _picker=ImagePicker();
+      XFile? image= await _picker.pickImage(source: ImageSource.gallery);
+      if(image!=null){
+        var selected=File(image.path);
+        setState(() {
+          _pickedImage=selected;
+        });
+      }else{
+        print("No image has been picked");
+      }
+    }else if(kIsWeb){
+      final ImagePicker _picker=ImagePicker();
+      XFile? image= await _picker.pickImage(source: ImageSource.gallery);
+      if(image!=null){
+        var file=await image.readAsBytes();
+        setState(() {
+          webImage=file;
+          _pickedImage=File('a');
+        });
+      }else{
+        print("No image has been picked");
+      }
+    }else{
+      print("Something went wrong");
+    }
+
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    double width = MediaQuery.of(context).size.width;
+    double height = MediaQuery.of(context).size.height;
+    double _getSize(defaultSize, minSize, maxSize){
+      double currentSize=defaultSize*width;
+      if(currentSize<minSize) return minSize;
+      else if(currentSize>maxSize) return maxSize;
+      else return currentSize;
+    }
     return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Text(
-              'You have pushed the button this many times:',
+              'Click the button to select an image',
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
+            const SizedBox(
+              height: 30,
             ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  width: _getSize(0.5, 100, 300),
+                  height: _getSize(0.5, 100, 300),
+                  color: Colors.grey.withAlpha(30),
+                  child: Center(
+                    child: IconButton(
+                      onPressed: (){
+                        handleImagePicker();
+                      },
+                      iconSize: 50,
+                      icon: const Icon(
+                        Icons.add,
+                        // size: 50,
+                      ),
+                    ),
+                  ),
+                ),
+                if(_pickedImage!=null)
+                Container(
+                  width: _getSize(0.5, 100, 300),
+                  height: _getSize(0.5, 100, 300),
+                  child: kIsWeb?
+                  Image.memory(webImage,fit: BoxFit.fill)
+                  :
+                  Image.file(_pickedImage!, fit: BoxFit.fill),
+                )
+              ],
+            )
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
