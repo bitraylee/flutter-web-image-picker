@@ -81,8 +81,8 @@ class _MyHomePageState extends State<MyHomePage> {
       if(image!=null){
         var file=await image.readAsBytes();
         setState(() {
-          webImage=file;
-          _pickedImage=File('a');
+          // webImage=file;
+          _pickedImage=File.fromRawPath(file);
         });
       }else{
         print("No image has been picked");
@@ -140,10 +140,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 Container(
                   width: _getSize(0.5, 100, 300),
                   height: _getSize(0.5, 100, 300),
-                  child: kIsWeb?
-                  Image.memory(webImage,fit: BoxFit.fill)
-                  :
-                  Image.file(_pickedImage!, fit: BoxFit.fill),
+                  child: Image.network(_pickedImage!.path, fit: BoxFit.fill),
                 )
               ],
             )
