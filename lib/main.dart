@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -19,15 +20,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
@@ -38,15 +30,6 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
@@ -55,54 +38,90 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   File? _pickedImage;
-  Uint8List webImage=Uint8List(8);
+  Uint8List webImage = Uint8List(8);
 
   Future<void> handleImagePicker() async {
     // print("K is web");
-    if(!kIsWeb){
-      final permStatus=await Permission.mediaLibrary.request();
-      if(!permStatus.isGranted){
+    if (!kIsWeb) {
+      final permStatus = await Permission.mediaLibrary.request();
+      if (!permStatus.isGranted) {
         print("Cannot access photo gallery");
         return;
       }
-      final ImagePicker _picker=ImagePicker();
-      XFile? image= await _picker.pickImage(source: ImageSource.gallery);
-      if(image!=null){
-        var selected=File(image.path);
+      final ImagePicker _picker = ImagePicker();
+      XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        var selected = File(image.path);
         setState(() {
-          _pickedImage=selected;
+          _pickedImage = selected;
         });
-      }else{
+      } else {
         print("No image has been picked");
       }
-    }else if(kIsWeb){
-      final ImagePicker _picker=ImagePicker();
-      XFile? image= await _picker.pickImage(source: ImageSource.gallery);
-      if(image!=null){
-        var file=await image.readAsBytes();
+    } else if (kIsWeb) {
+      final ImagePicker _picker = ImagePicker();
+      XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        var file = await image.readAsBytes();
         setState(() {
-          // webImage=file;
-          _pickedImage=File.fromRawPath(file);
+          webImage = file;
+          _pickedImage = File('a');
         });
-      }else{
+      } else {
         print("No image has been picked");
       }
-    }else{
+    } else {
       print("Something went wrong");
     }
+  }
 
+  Future<void> uploadImageToServer() async {
+    if(kIsWeb){
+      var uri=Uri.parse("http://localhost:5000/image_upload");
+      if(webImage!=null){
+        var request=http.MultipartRequest('POST', uri)
+          ..fields['data']='this is the data'
+          ..files.add(http.MultipartFile.fromBytes('image', webImage,
+              filename: "image.jpg"
+          )
+          );
+        var response=await request.send();
+        if(response.statusCode==200) print("File uploaded successfully");
+      }else{
+        print("The webImage is null");
+      }
+    }else{
+      var uri=Uri.parse("http://localhost:5000/image_upload");
+      print("in phone");
+      if(_pickedImage==null) {
+        print("No image selected");
+        return;
+      }
+      var request=http.MultipartRequest('POST', uri);
+      request.files.add(http.MultipartFile.fromBytes("image",
+          File((_pickedImage?.path)!).readAsBytesSync(),
+        filename: "image.jpg"
+        )
+      );
+      var response=await request.send();
+      if(response.statusCode==200) print("File uploaded successfully");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     double width = MediaQuery.of(context).size.width;
     double height = MediaQuery.of(context).size.height;
-    double _getSize(defaultSize, minSize, maxSize){
-      double currentSize=defaultSize*width;
-      if(currentSize<minSize) return minSize;
-      else if(currentSize>maxSize) return maxSize;
-      else return currentSize;
+    double _getSize(defaultSize, minSize, maxSize) {
+      double currentSize = defaultSize * width;
+      if (currentSize < minSize)
+        return minSize;
+      else if (currentSize > maxSize)
+        return maxSize;
+      else
+        return currentSize;
     }
+
     return Scaffold(
       body: Center(
         child: Column(
@@ -120,12 +139,12 @@ class _MyHomePageState extends State<MyHomePage> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  width: _getSize(0.5, 100, 300),
-                  height: _getSize(0.5, 100, 300),
+                  width: _getSize(0.4, 100, 300),
+                  height: _getSize(0.4, 100, 300),
                   color: Colors.grey.withAlpha(30),
                   child: Center(
                     child: IconButton(
-                      onPressed: (){
+                      onPressed: () {
                         handleImagePicker();
                       },
                       iconSize: 50,
@@ -136,14 +155,23 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                 ),
-                if(_pickedImage!=null)
-                Container(
-                  width: _getSize(0.5, 100, 300),
-                  height: _getSize(0.5, 100, 300),
-                  child: Image.network(_pickedImage!.path, fit: BoxFit.fill),
-                )
+                if (_pickedImage != null)
+                  Container(
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 0, horizontal: 10),
+                      width: _getSize(0.4, 100, 300),
+                      height: _getSize(0.4, 100, 300),
+                      child: kIsWeb
+                          ? Image.memory(webImage, fit: BoxFit.cover)
+                          : Image.file(_pickedImage!, fit: BoxFit.cover)),
               ],
-            )
+            ),
+            const SizedBox(
+              height: 20,
+            ),
+            TextButton(
+                onPressed: uploadImageToServer,
+                child: const Text('Upload image to the server'))
           ],
         ),
       ),
