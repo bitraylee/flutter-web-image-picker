@@ -17,15 +17,18 @@ app.use((req, res, next) => {
 
 const diskStorage = multer.diskStorage({
 	destination: (req, file, cb) => {
-		cb(null, "./images")
+		cb(null, "./files")
 	},
-	filename: (req, _file, cb) => {
-		const getFileName = (_file) => {
-			const prefix = Date.now()
-			const extName = _file ? path.extname(_file.originalname) : ".jpg"
-			return prefix + extName
+	filename: (req, file, cb) => {
+		console.log(file.mimetype)
+		const extName = file.mimetype.split("/")[1]
+		let fileName = ""
+		if (file && file.originalname.includes(extName) && extName != "octet-stream") {
+			fileName = file.originalname
+		} else {
+			fileName = `${Date.now()}_${file?.originalname.toLowerCase()}.${extName}`.split(" ").join("-")
 		}
-		cb(null, getFileName())
+		cb(null, fileName)
 	},
 })
 
@@ -34,11 +37,6 @@ const upload = multer({
 })
 
 app.get("/", (req, res) => {
-	// fs.readFile("./assets/asset-1.jpg", (err, data) => {
-	// 	if (err) throw err
-	// 	res.writeHead(200, { "Content-Type": "image/jpeg" })
-	// 	res.end(data)
-	// })
 	res.send("Hello there")
 })
 
