@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_web_image_picker/Screens/PDFSelectorScreen.dart';
+import 'package:flutter_web_image_picker/Screens/PdfViewer.dart';
 
 import 'Screens/ImagePickerScreen.dart';
 

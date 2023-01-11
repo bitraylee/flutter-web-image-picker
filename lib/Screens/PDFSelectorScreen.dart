@@ -1,5 +1,8 @@
-import 'dart:typed_data';
+import 'dart:io';
+import 'dart:html' as html;
+import 'package:pdf_viewer_plugin/pdf_viewer_plugin.dart';
 
+import 'package:flutter/foundation.dart';
 import "package:flutter/material.dart";
 import "package:file_picker/file_picker.dart";
 import 'package:http/http.dart';
@@ -13,26 +16,35 @@ class PDFSelectorScreen extends StatefulWidget {
 }
 
 class _PDFSelecterScreen extends State<PDFSelectorScreen> {
-  FilePickerResult? _pickedFile;
   String fileName = "";
   bool isFilePicked=false;
   Uint8List fileBytes=Uint8List(8);
+  String path="";
 
   Future<void> handlePDFPicker() async {
-    _pickedFile = await FilePicker.platform.pickFiles();
+    FilePickerResult? pickedFile=await FilePicker.platform.pickFiles();
 
-    if (_pickedFile != null) {
-      PlatformFile file = _pickedFile!.files.first;
-      fileBytes=file.bytes!;
+    if (pickedFile != null) {
+      if(!kIsWeb){
+        File file=File(pickedFile.files.single.path.toString());
+        fileBytes=file.readAsBytesSync();
+        String name=file.path.split('/').last;
+        path=file.path.toString();
 
-      print(file.name);
-      print(file.size);
-      print(file.extension);
-
-      setState(() {
-        isFilePicked=true;
-        fileName = file.name;
-      });
+        print('Name: $name\nSize: ${fileBytes.length}');
+        setState(() {
+          fileName=name;
+          isFilePicked=true;
+        });
+      }else{
+        PlatformFile file = pickedFile.files.first;
+        fileBytes=file.bytes!;
+        print('Name: ${file.name}\nSize: ${file.size}');
+        setState(() {
+          fileName=file.name;
+          isFilePicked=true;
+        });
+      }
     } else {
       print("Unable to pick files");
     }
@@ -59,7 +71,28 @@ class _PDFSelecterScreen extends State<PDFSelectorScreen> {
       print(error);
     }
   }
+  Future<void> handleViewPdf() async{
+    try{
+      if(kIsWeb){
+        final blob = html.Blob([fileBytes], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        html.window.open(url,'_blank');
+        html.Url.revokeObjectUrl(url);
+      }else{
+        print('[85]: $path');
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => PdfView(path: path)
+          )
+        );
+      }
+    }catch(e){
+      print(e);
+    }
 
+  }
+
+  @override
   Widget build(BuildContext context) {
     double width = MediaQuery.of(context).size.width;
 
@@ -128,7 +161,10 @@ class _PDFSelecterScreen extends State<PDFSelectorScreen> {
                         SizedBox(
                           width: 200,
                           child: Center(
-                            child: Text(fileName),
+                            child:TextButton(
+                                onPressed: handleViewPdf,
+                                child: Text(fileName)
+                            ),
                           ),
                         )
 
